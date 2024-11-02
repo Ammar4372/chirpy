@@ -6,12 +6,9 @@ import (
 	"net/http"
 )
 
-func responseWithError(w http.ResponseWriter, code int, msg string, err error) {
-	if err != nil {
-		log.Println(err)
-	}
+func responseWithError(w http.ResponseWriter, code int, msg string) {
 	if code > 499 {
-		log.Printf("Responding with status 5XX err %s", msg)
+		log.Printf("Responding with status %d Error: %s", code, msg)
 	}
 	type errorResp struct {
 		Error string `json:"error"`

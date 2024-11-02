@@ -1,32 +1,58 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"sync/atomic"
+
+	"github.com/Ammar4372/chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	db             *database.Queries
+	env            string
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("error loading env %s\n", err)
+		os.Exit(1)
+	}
+	dbUrl := os.Getenv("DB_URL")
+	platforn := os.Getenv("PLATFORM")
+	db, err := sql.Open("postgres", dbUrl)
+	dbQueries := database.New(db)
+	if err != nil {
+		log.Fatalf("error loading env %s\n", err)
+		os.Exit(1)
+	}
+
 	mux := http.NewServeMux()
 	cfg := apiConfig{
 		fileserverHits: atomic.Int32{},
+		db:             dbQueries,
+		env:            platforn,
 	}
 	mux.Handle("/app/", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(".")))))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
-	mux.HandleFunc("POST /api/validate_chirp", handlerValidate)
 	mux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
+	mux.HandleFunc("POST /api/users", cfg.handlerCreateUser)
+	mux.HandleFunc("POST /api/chirps", cfg.handlerCreateChirp)
+	mux.HandleFunc("GET /api/chirps", cfg.handlerGetChirps)
+	mux.HandleFunc("GET /api/chirps/{id}", cfg.handlerChirpById)
 	server := http.Server{
 		Handler: mux,
 		Addr:    ":8080",
 	}
-	err := server.ListenAndServe()
+	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)
