@@ -17,6 +17,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	env            string
+	secret         string
 }
 
 func main() {
@@ -39,15 +40,19 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
 		env:            platforn,
+		secret:         os.Getenv("JWT_SECRET"),
 	}
 	mux.Handle("/app/", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(".")))))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
 	mux.HandleFunc("GET /admin/metrics", cfg.handlerMetrics)
 	mux.HandleFunc("POST /admin/reset", cfg.handlerReset)
 	mux.HandleFunc("POST /api/users", cfg.handlerCreateUser)
+	mux.HandleFunc("POST /api/login", cfg.handlerUserLogin)
 	mux.HandleFunc("POST /api/chirps", cfg.handlerCreateChirp)
 	mux.HandleFunc("GET /api/chirps", cfg.handlerGetChirps)
 	mux.HandleFunc("GET /api/chirps/{id}", cfg.handlerChirpById)
+	mux.HandleFunc("POST /api/refresh", cfg.handlerTokenRefresh)
+	mux.HandleFunc("POST /api/revoke", cfg.handlerTokenRevoke)
 	server := http.Server{
 		Handler: mux,
 		Addr:    ":8080",
