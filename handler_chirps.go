@@ -26,6 +26,7 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 		return
 	}
 	params := database.CreateChripParams{}
+	defer req.Body.Close()
 	docoder := json.NewDecoder(req.Body)
 	err = docoder.Decode(&params)
 	if err != nil {

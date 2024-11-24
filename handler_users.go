@@ -23,10 +23,12 @@ type respBody struct {
 	UpdatedAtAt  time.Time `json:"updated_at"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request) {
 	body := reqBody{}
+	defer req.Body.Close()
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&body)
 	if err != nil {
@@ -53,6 +55,7 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, req *http.Request
 
 func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, req *http.Request) {
 	body := reqBody{}
+	defer req.Body.Close()
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&body)
 	if err != nil {
@@ -103,6 +106,7 @@ func (cfg *apiConfig) handlerUserLogin(w http.ResponseWriter, req *http.Request)
 		UpdatedAtAt:  user.UpdatedAt,
 		Token:        token,
 		RefreshToken: refresh_token,
+		IsChirpyRed:  user.IsChirpyRed,
 	}
 	responseWithJson(w, http.StatusOK, resp)
 }

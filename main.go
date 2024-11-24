@@ -18,6 +18,7 @@ type apiConfig struct {
 	db             *database.Queries
 	env            string
 	secret         string
+	polkaApiKey    string
 }
 
 func main() {
@@ -29,11 +30,11 @@ func main() {
 	dbUrl := os.Getenv("DB_URL")
 	platforn := os.Getenv("PLATFORM")
 	db, err := sql.Open("postgres", dbUrl)
-	dbQueries := database.New(db)
 	if err != nil {
-		log.Fatalf("error loading env %s\n", err)
+		log.Fatalf("error opening database connection %s\n", err)
 		os.Exit(1)
 	}
+	dbQueries := database.New(db)
 
 	mux := http.NewServeMux()
 	cfg := apiConfig{
@@ -41,6 +42,7 @@ func main() {
 		db:             dbQueries,
 		env:            platforn,
 		secret:         os.Getenv("JWT_SECRET"),
+		polkaApiKey:    os.Getenv("POLKA_API"),
 	}
 	mux.Handle("/app/", cfg.middlewareMetricInc(http.StripPrefix("/app", http.FileServer(http.Dir(".")))))
 	mux.HandleFunc("GET /api/healthz", handlerReadiness)
@@ -53,6 +55,7 @@ func main() {
 	mux.HandleFunc("GET /api/chirps/{id}", cfg.handlerChirpById)
 	mux.HandleFunc("POST /api/refresh", cfg.handlerTokenRefresh)
 	mux.HandleFunc("POST /api/revoke", cfg.handlerTokenRevoke)
+	mux.HandleFunc("POST /api/polka/webhooks", cfg.handlerPolkaWebhook)
 	server := http.Server{
 		Handler: mux,
 		Addr:    ":8080",

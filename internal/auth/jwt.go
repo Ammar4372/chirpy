@@ -25,6 +25,7 @@ func MakeJWT(userId uuid.UUID, tokenSecret string, expiresIn time.Duration) (str
 	})
 	return token.SignedString([]byte(tokenSecret))
 }
+
 func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
 		return []byte(tokenSecret), nil
@@ -46,7 +47,12 @@ func GetBearerToken(headers http.Header) (string, error) {
 	bearer = strings.Replace(bearer, "Bearer ", "", 1)
 	return bearer, nil
 }
-
+func GetApiKey(h http.Header) (string, error) {
+	if key := h.Get("Authorization"); key != "" {
+		return strings.Replace(key, "ApiKey ", "", 1), nil
+	}
+	return "", fmt.Errorf("key not found")
+}
 func MakeRefreshToken() (string, error) {
 	b := make([]byte, 32)
 	_, err := rand.Read(b)
