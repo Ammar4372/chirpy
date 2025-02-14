@@ -48,7 +48,7 @@ func (q *Queries) CreateChrip(ctx context.Context, arg CreateChripParams) (Chirp
 }
 
 const getAllChirps = `-- name: GetAllChirps :many
-SELECT id, body, user_id, created_at, updated_at FROM chirps
+SELECT id, body, user_id, created_at, updated_at FROM chirps ORDER BY created_at
 `
 
 func (q *Queries) GetAllChirps(ctx context.Context) ([]Chirp, error) {
@@ -80,8 +80,41 @@ func (q *Queries) GetAllChirps(ctx context.Context) ([]Chirp, error) {
 	return items, nil
 }
 
+const getChirpByAuthorId = `-- name: GetChirpByAuthorId :many
+SELECT id, body, user_id, created_at, updated_at FROM chirps WHERE user_id = $1 ORDER BY created_at
+`
+
+func (q *Queries) GetChirpByAuthorId(ctx context.Context, userID uuid.UUID) ([]Chirp, error) {
+	rows, err := q.db.QueryContext(ctx, getChirpByAuthorId, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Chirp
+	for rows.Next() {
+		var i Chirp
+		if err := rows.Scan(
+			&i.ID,
+			&i.Body,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getChirpById = `-- name: GetChirpById :one
-SELECT id, body, user_id, created_at, updated_at FROM chirps WHERE Id = $1
+SELECT id, body, user_id, created_at, updated_at FROM chirps WHERE Id = $1 ORDER BY created_at
 `
 
 func (q *Queries) GetChirpById(ctx context.Context, id uuid.UUID) (Chirp, error) {

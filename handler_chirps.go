@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -58,10 +58,35 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, req *http.Reques
 }
 
 func (cfg *apiConfig) handlerGetChirps(w http.ResponseWriter, req *http.Request) {
+	authorId := req.URL.Query().Get("author_id")
+
+	if authorId != "" {
+		authorID, err := uuid.Parse(authorId)
+		if err != nil {
+			responseWithError(w, http.StatusBadRequest, "Invalid author id", err)
+			return
+		}
+		chirps, err := cfg.db.GetChirpByAuthorId(context.Background(), authorID)
+		if err != nil {
+			responseWithError(w, http.StatusInternalServerError, fmt.Sprintf("%s", err), err)
+			return
+		}
+		responseWithJson(w, http.StatusOK, chirps)
+		return
+	}
 	chirps, err := cfg.db.GetAllChirps(context.Background())
 	if err != nil {
 		responseWithError(w, http.StatusInternalServerError, fmt.Sprintf("%s", err), err)
 		return
+	}
+	sortby := req.URL.Query().Get("sort")
+	switch sortby {
+	case "desc":
+		sort.Slice(chirps, func(i, j int) bool { return chirps[i].CreatedAt.After(chirps[j].CreatedAt) })
+		fmt.Print(sortby)
+		break
+	default:
+		break
 	}
 	responseWithJson(w, http.StatusOK, chirps)
 }
@@ -73,7 +98,7 @@ func (cfg *apiConfig) handlerChirpById(w http.ResponseWriter, req *http.Request)
 		return
 	}
 	chirp, err := cfg.db.GetChirpById(context.Background(), Id)
-	if err == errors.New("sql: no rows in result set") {
+	if err.Error() == "sql: no rows in result set" {
 		responseWithError(w, http.StatusNotFound, "Resource Not Found", err)
 		return
 	}
